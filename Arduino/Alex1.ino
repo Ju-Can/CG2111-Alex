@@ -42,10 +42,15 @@ float AlexCirc = 0.0;
 
 // Motor control pins. You need to adjust these till
 // Alex moves in the correct direction
-#define LF                  11 // Left forward pin
-#define LR                  10// Left reverse pin
+#define LF                  10 // Left forward pin
+#define LR                  9// Left reverse pin
 #define RF                  5 // Right forward pin
 #define RR                  6 // Right reverse pin
+
+#define LF0 (1 << 10)
+#define LR0 (1 << 9)
+#define RF0 (1 << 5)
+#define RR0 (1 << 6)
 
 /*
       Alex's State Variables
@@ -220,7 +225,6 @@ void enablePullups()
   // Use bare-metal to enable the pull-up resistors on pins
   // 2 and 3. These are pins PD2 and PD3 respectively.
   // We set bits 2 and 3 in DDRD to 0 to make them inputs.
-
   DDRD = 0b0000;
   PORTD = 0b1100;
 
@@ -282,7 +286,6 @@ void setupEINT()
   // Use bare-metal to configure pins 2 and 3 to be
   // falling edge triggered. Remember to enable
   // the INT0 and INT1 interrupts.
-
   EICRA = 0b1010;
   EIMSK = 0b11;
 }
@@ -359,11 +362,33 @@ void writeSerial(const char *buffer, int len)
 void setupMotors()
 {
   /* Our motor set up is:
-        A1IN - Pin 5, PD5, OC0B
-        A2IN - Pin 6, PD6, OC0A
-        B1IN - Pin 10, PB2, OC1B
-        B2In - pIN 11, PB3, OC2A
+      A1IN - Pin 5, PD5, OC0B LF
+      A2IN - Pin 6, PD6, OC0A LR
+      B1IN - Pin 9, PB1, OC1A RF
+      B2In - pIN 10, PB2, OC1B RR
   */
+
+
+  // Set up Timer 0
+  DDRD |= (LF0|LR0);
+  TCNT0 = 0;
+  TIMSK0 |= 0b110;
+  OCR0A = 128;
+  OCR0B = 128;
+  TCCR0B = 0b00000011;
+  //prevMillis = millis();
+  
+  // Set up Timer 1
+  DDRB |= (RF0|RR0)
+  TCNT1L = 0;
+  TCNT1H = 0;
+  TIMSK1 |= 0b110;
+  OCR1AL = 0;
+  OCR1AH = 0;
+  OCR1BL = 0;
+  OCR1BH = 0;
+  TCCR1B = 0b00000011;
+
 }
 
 // Start the PWM for Alex's motors.
@@ -375,6 +400,7 @@ void startMotors()
 }
 
 // Convert percentages to PWM values
+// CHANGE NAME
 int pwmVal(float speed)
 {
   if (speed < 0.0)
@@ -383,7 +409,8 @@ int pwmVal(float speed)
   if (speed > 100.0)
     speed = 100.0;
 
-  return (int) ((speed / 100.0) * 255.0);
+  return (int) speed;
+  //return (int) ((speed / 100.0) * 255.0);
 }
 
 // Move Alex forward "dist" cm at speed "speed".
@@ -404,16 +431,23 @@ void forward(float dist, float speed)
   dir = FORWARD;
   int val = pwmVal(speed);
 
-
-
   // LF = Left forward pin, LR = Left reverse pin
   // RF = Right forward pin, RR = Right reverse pin
   // This will be replaced later with bare-metal code.
 
-  analogWrite(LF, val);
-  analogWrite(RF, val);
-  analogWrite(LR, 0);
-  analogWrite(RR, 0);
+  //LF
+  TCCR0A = 0b10000001;
+  OCR0A = pwmVal(speed); // JC: would this work??
+  //analogWrite(LF, val);
+
+  //RF
+  TCCR1A = 0b10000001
+  OCR0A = pwmVal(speed);
+  //analogWrite(RF, val);
+
+  //LR
+  //analogWrite(LR, 0);
+  //analogWrite(RR, 0);
 }
 
 // Reverse Alex "dist" cm at speed "speed".
@@ -441,10 +475,20 @@ void reverse(float dist, float speed)
   // LF = Left forward pin, LR = Left reverse pin
   // RF = Right forward pin, RR = Right reverse pin
   // This will be replaced later with bare-metal code.
-  analogWrite(LR, val);
-  analogWrite(RR, val);
-  analogWrite(LF, 0);
-  analogWrite(RF, 0);
+
+  // LR
+  TCCR0A = 0b00100001;
+  OCR0B = pwmVal(speed);
+  //analogWrite(LR, val);
+  
+  // RR
+  TCCR1A = 0b00100001
+  OCR1BL = pwmVal(speed);
+  OCR1BH = 0;
+  //analogWrite(RR, val);
+
+  //analogWrite(LF, 0);
+  //analogWrite(RF, 0);
 }
 
 // Turn Alex left "ang" degrees at speed "speed".
@@ -471,16 +515,22 @@ void left(float ang, float speed)
     deltaTicks = computeDeltaTicks(ang);
   targetTicks = leftReverseTicksTurns + deltaTicks;
 
-
-
   // For now we will ignore ang. We will fix this in Week 9.
   // We will also replace this code with bare-metal later.
   // To turn left we reverse the left wheel and move
   // the right wheel forward.
-  analogWrite(LR, val);
-  analogWrite(RF, val);
-  analogWrite(LF, 0);
-  analogWrite(RR, 0);
+  //LR
+  TCCR0A = 0b00100001;
+  OCR0B = pwmVal(speed);
+  //analogWrite(LR, val);
+
+  //RF
+  TCCR1A = 0b10000001
+  OCR0A = pwmVal(speed);
+  //analogWrite(RF, val);
+
+  // analogWrite(LF, 0);
+  // analogWrite(RR, 0);
 }
 
 // Turn Alex right "ang" degrees at speed "speed".
@@ -499,15 +549,24 @@ void right(float ang, float speed)
     deltaTicks = computeDeltaTicks(ang);
   targetTicks = leftForwardTicksTurns + deltaTicks;
 
-
   // For now we will ignore ang. We will fix this in Week 9.
   // We will also replace this code with bare-metal later.
   // To turn right we reverse the right wheel and move
   // the left wheel forward.
-  analogWrite(RR, val);
-  analogWrite(LF, val);
-  analogWrite(LR, 0);
-  analogWrite(RF, 0);
+
+  //RR
+  TCCR1A = 0b00100001
+  OCR1BL = pwmVal(speed);
+  OCR1BH = 0;
+  //analogWrite(RR, val);
+  
+  //LF
+  TCCR0A = 0b10000001;
+  OCR0A = pwmVal(speed);
+  //analogWrite(LF, val);
+
+  //analogWrite(LR, 0);
+  //analogWrite(RF, 0);
 }
 
 // Stop Alex. To replace with bare-metal code later.
@@ -635,6 +694,7 @@ void setup() {
                       ALEX_BREADTH));
   AlexCirc = PI * AlexDiagonal;
   cli();
+
   setupEINT();
   setupSerial();
   startSerial();
@@ -670,9 +730,7 @@ void handlePacket(TPacket *packet)
 void loop() {
 
   // Uncomment the code below for Step 2 of Activity 3 in Week 8 Studio 2
-
   //forward(0, 100);
-
   // Uncomment the code below for Week 9 Studio 2
 
   // put your main code here, to run repeatedly:
@@ -747,9 +805,4 @@ void loop() {
       stop();
     }
   }
-
-
-
-
-
 }
