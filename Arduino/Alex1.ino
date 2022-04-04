@@ -95,15 +95,20 @@ TResult readPacket(TPacket *packet)
   // deserializes it.Returns deserialized
   // data in "packet".
 
-  char buffer[PACKET_SIZE];
-  int len;
+  //char buffer[PACKET_SIZE];
+  //int len;
 
-  len = readSerial(buffer);
+  //len = readSerial(buffer);
+
+  unsigned char data;
+  data = readSerial();
+  int len = sizeof (data);
 
   if (len == 0)
     return PACKET_INCOMPLETE;
   else
-    return deserialize(buffer, len, packet);
+    //return deserialize(buffer, len, packet);
+    return deserialize (data, len, packet);
 
 }
 
@@ -314,7 +319,13 @@ ISR(INT1_vect) {
 void setupSerial()
 {
   // To replace later with bare-metal.
-  Serial.begin(9600);
+  //baud-rate
+  UBBR0L = 103;
+  UBBR0H = 0;
+
+  UCSR0C = 0b00000110;
+  UCSR0A = 0;
+  //Serial.begin(9600);
 }
 
 // Start the serial connection. For now we are using
@@ -325,6 +336,7 @@ void startSerial()
 {
   // Empty for now. To be replaced with bare-metal code
   // later on.
+  UCSR0B = 0b00011000;
 
 }
 
@@ -337,8 +349,10 @@ int readSerial(char *buffer)
 
   int count = 0;
 
-  while (Serial.available())
-    buffer[count++] = Serial.read();
+  // while (Serial.available())
+  //   buffer[count++] = Serial.read();
+  while((UCSR0A & 0b10000000) == 0)
+    buffer[count++] = UDR0;
 
   return count;
 }
@@ -346,6 +360,11 @@ int readSerial(char *buffer)
 // Write to the serial port. Replaced later with
 // bare-metal code
 
+// void writeSerial(const char *buffer, int len)
+// {
+//   while((UCSR0A & 0b00100000) == 0)
+//     UDR0 = 
+// }
 void writeSerial(const char *buffer, int len)
 {
   Serial.write(buffer, len);
