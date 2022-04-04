@@ -47,10 +47,10 @@ float AlexCirc = 0.0;
 #define RF                  5 // Right forward pin
 #define RR                  6 // Right reverse pin
 
-#define LF0 (1 << 10)
-#define LR0 (1 << 9)
-#define RF0 (1 << 5)
-#define RR0 (1 << 6)
+#define PIN10 (1 << 10)
+#define PIN9 (1 << 9)
+#define PIN5 (1 << 5)
+#define PIN6 (1 << 6)
 
 /*
       Alex's State Variables
@@ -370,16 +370,25 @@ void setupMotors()
 
 
   // Set up Timer 0
-  DDRD |= (LF0|LR0);
+  DDRD |= (PIN5|PIN6);
+  
+  // Set up Timer 1
+  DDRB |= (PIN9|PIN10)
+  
+}
+
+// Start the PWM for Alex's motors.
+// We will implement this later. For now it is
+// blank.
+void startMotors()
+{
   TCNT0 = 0;
   TIMSK0 |= 0b110;
   OCR0A = 128;
   OCR0B = 128;
   TCCR0B = 0b00000011;
   //prevMillis = millis();
-  
-  // Set up Timer 1
-  DDRB |= (RF0|RR0)
+
   TCNT1L = 0;
   TCNT1H = 0;
   TIMSK1 |= 0b110;
@@ -389,13 +398,7 @@ void setupMotors()
   OCR1BH = 0;
   TCCR1B = 0b00000011;
 
-}
 
-// Start the PWM for Alex's motors.
-// We will implement this later. For now it is
-// blank.
-void startMotors()
-{
 
 }
 
@@ -438,6 +441,7 @@ void forward(float dist, float speed)
   //LF
   TCCR0A = 0b10000001;
   OCR0A = pwmVal(speed); // JC: would this work??
+  //PORTD &= ~PIN5; JC: need to compare for it to work?
   //analogWrite(LF, val);
 
   //RF
@@ -573,10 +577,12 @@ void right(float ang, float speed)
 void stop()
 {
   dir = STOP;
-  analogWrite(LF, 0);
-  analogWrite(LR, 0);
-  analogWrite(RF, 0);
-  analogWrite(RR, 0);
+  TCCR0A = 0b00000001;
+  TCCR1A = 0b00000001;
+  //analogWrite(LF, 0);
+  //analogWrite(LR, 0);
+  //analogWrite(RF, 0);
+  //analogWrite(RR, 0);
 }
 
 /*
