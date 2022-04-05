@@ -95,20 +95,15 @@ TResult readPacket(TPacket *packet)
   // deserializes it.Returns deserialized
   // data in "packet".
 
-  //char buffer[PACKET_SIZE];
-  //int len;
+  char buffer[PACKET_SIZE];
+  int len;
 
-  //len = readSerial(buffer);
-
-  unsigned char data;
-  data = readSerial();
-  int len = sizeof (data);
+  len = readSerial(buffer);
 
   if (len == 0)
     return PACKET_INCOMPLETE;
   else
-    //return deserialize(buffer, len, packet);
-    return deserialize (data, len, packet);
+    return deserialize(buffer, len, packet);
 
 }
 
@@ -360,15 +355,19 @@ int readSerial(char *buffer)
 // Write to the serial port. Replaced later with
 // bare-metal code
 
-// void writeSerial(const char *buffer, int len)
-// {
-//   while((UCSR0A & 0b00100000) == 0)
-//     UDR0 = 
-// }
 void writeSerial(const char *buffer, int len)
 {
-  Serial.write(buffer, len);
+  int i = len;
+  while (i--){
+    while((UCSR0A & 0b00100000) == 0){
+      UDR0 = buffer[i-1]
+    }
+  } 
 }
+// void writeSerial(const char *buffer, int len)
+// {
+//   Serial.write(buffer, len);
+// }
 
 /*
    Alex's motor drivers.
